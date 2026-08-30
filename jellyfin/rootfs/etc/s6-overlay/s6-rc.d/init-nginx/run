@@ -1,0 +1,30 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Community App: Jellyfin
+# Configures NGINX for use with Jellyfin
+# ==============================================================================
+
+# Generate Ingress configuration
+bashio::var.json \
+    interface "$(bashio::app.ip_address)" \
+    port "^$(bashio::app.ingress_port)" \
+    | tempio \
+        -template /etc/nginx/templates/ingress.gtpl \
+        -out /etc/nginx/servers/ingress.conf
+
+# The direct servers are always generated, even when neither port is published
+# to the host. The Jellyfin apps and the Home Assistant integration both need a
+# plain address to connect to, and reach this app over the internal network
+# when nothing is published.
+bashio::config.require.ssl
+
+bashio::var.json \
+    certfile "$(bashio::config 'certfile')" \
+    keyfile "$(bashio::config 'keyfile')" \
+    port "^8096" \
+    ssl "^$(bashio::config 'ssl')" \
+    ssl_port "^8920" \
+    | tempio \
+        -template /etc/nginx/templates/direct.gtpl \
+        -out /etc/nginx/servers/direct.conf

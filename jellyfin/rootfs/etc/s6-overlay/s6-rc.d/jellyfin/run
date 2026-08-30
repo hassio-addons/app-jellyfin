@@ -1,0 +1,32 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Community App: Jellyfin
+# Runs the Jellyfin server
+# ==============================================================================
+
+# Image handling hands back memory in a pattern that glibc's allocator holds on
+# to rather than returning to the system, which shows up as a server that only
+# ever grows. These two are what the Jellyfin packages run with themselves:
+# jemalloc in front of the allocator, and a trim threshold low enough that the
+# memory freed after resizing artwork is handed back.
+export LD_PRELOAD='/usr/lib/jellyfin/libjemalloc.so'
+export MALLOC_TRIM_THRESHOLD_='131072'
+
+# Burning subtitles into a video makes fontconfig index every font in the
+# image. That index belongs next to the rest of the cache, rather than in the
+# container's own file system where it is thrown away on every restart.
+export XDG_CACHE_HOME='/config/cache'
+
+bashio::log.info 'Starting Jellyfin...'
+
+# Everything Jellyfin owns lives in this app's configuration folder: the
+# database and the artwork it collects, the settings, and the cache with the
+# transcoding scratch space inside it.
+exec /usr/lib/jellyfin/bin/jellyfin \
+    --cachedir /config/cache \
+    --configdir /config/config \
+    --datadir /config \
+    --ffmpeg /usr/lib/jellyfin-ffmpeg/ffmpeg \
+    --logdir /config/log \
+    --webdir /usr/share/jellyfin/web

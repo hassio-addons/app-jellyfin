@@ -1,0 +1,122 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Community App: Jellyfin
+# Applies the settings this app owns before Jellyfin starts
+# ==============================================================================
+readonly NETWORK='/config/config/network.xml'
+declare log_level
+
+# Sets an element in Jellyfin's network configuration, adding it when it is not
+# there yet. Jellyfin writes this file back whenever anything under
+# "Networking" is saved, so every one of these is applied on every start.
+set_network() {
+    local key=${1}
+    local value=${2}
+
+    if [[
+        "$(xmlstarlet select --template --value-of \
+            "count(/NetworkConfiguration/${key})" "${NETWORK}")" -gt 0
+    ]]; then
+        xmlstarlet edit --inplace \
+            --update "/NetworkConfiguration/${key}" --value "${value}" \
+            "${NETWORK}"
+    else
+        xmlstarlet edit --inplace \
+            --subnode "/NetworkConfiguration" --type elem \
+                --name "${key}" --value "${value}" \
+            "${NETWORK}"
+    fi
+}
+
+mkdir -p /config/config
+
+# A fresh install has no network configuration at all; Jellyfin keeps the
+# defaults in memory until something is saved. An empty document is enough for
+# the settings below to be written into, and Jellyfin fills in the rest.
+if ! bashio::fs.file_exists "${NETWORK}"; then
+    bashio::log.info 'First run! Setting up the network configuration...'
+
+    cat > "${NETWORK}" <<-'EOF'
+		<?xml version="1.0" encoding="utf-8"?>
+		<NetworkConfiguration>
+		</NetworkConfiguration>
+	EOF
+fi
+
+# NGINX is what listens on the ports this app publishes, so Jellyfin itself is
+# moved out of the way onto a port of its own.
+#
+# The two "public port" settings sitting next to this one in Jellyfin are left
+# alone on purpose: nothing in Jellyfin reads them any more, and the addresses
+# it hands out to clients carry the port it is listening on itself. Which is
+# why an app that finds this server by searching the network has to be told
+# where to go with "Published server URIs".
+set_network 'InternalHttpPort' '48096'
+
+# HTTPS is terminated by NGINX, using the "ssl" option of this app. Left to
+# Jellyfin, it would want port 8920 for itself, which is the port NGINX is
+# already listening on.
+set_network 'EnableHttps' 'false'
+
+# Both the Ingress path and the published ports arrive over loopback, which is
+# the only address the forwarded headers NGINX sets are accepted from.
+xmlstarlet edit --inplace \
+    --delete "/NetworkConfiguration/KnownProxies" \
+    --subnode "/NetworkConfiguration" --type elem --name "KnownProxies" \
+    --subnode "/NetworkConfiguration/KnownProxies" --type elem \
+        --name "string" --value "127.0.0.1" \
+    "${NETWORK}"
+
+# Jellyfin has a level of its own for every one this app knows. It reads them
+# from a file of its own, which it never writes to, so this app owns it.
+log_level="Information"
+case "$(bashio::string.lower "$(bashio::config 'log_level' 'info')")" in
+    trace)              log_level="Verbose" ;;
+    debug)              log_level="Debug" ;;
+    info|notice)        log_level="Information" ;;
+    warning)            log_level="Warning" ;;
+    error)              log_level="Error" ;;
+    fatal)              log_level="Fatal" ;;
+esac
+
+cat > /config/config/logging.json <<-EOF
+	{
+	    "Serilog": {
+	        "MinimumLevel": {
+	            "Default": "${log_level}",
+	            "Override": {
+	                "Microsoft": "Warning",
+	                "System": "Warning"
+	            }
+	        },
+	        "WriteTo": [
+	            {
+	                "Name": "Console",
+	                "Args": {
+	                    "outputTemplate": "[{Timestamp:HH:mm:ss}] [{Level:u3}] [{ThreadId}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
+	                }
+	            },
+	            {
+	                "Name": "Async",
+	                "Args": {
+	                    "configure": [
+	                        {
+	                            "Name": "File",
+	                            "Args": {
+	                                "path": "%JELLYFIN_LOG_DIR%//log_.log",
+	                                "rollingInterval": "Day",
+	                                "retainedFileCountLimit": 3,
+	                                "rollOnFileSizeLimit": true,
+	                                "fileSizeLimitBytes": 100000000,
+	                                "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{ThreadId}] {SourceContext}: {Message}{NewLine}{Exception}"
+	                            }
+	                        }
+	                    ]
+	                }
+	            }
+	        ],
+	        "Enrich": [ "FromLogContext", "WithThreadId" ]
+	    }
+	}
+EOF

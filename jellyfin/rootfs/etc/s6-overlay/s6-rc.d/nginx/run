@@ -1,0 +1,14 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Community App: Jellyfin
+# Runs the NGINX daemon
+# ==============================================================================
+
+# Wait for Jellyfin to become available. The first start of a new version
+# migrates the database before it begins listening, and a large library can
+# take a while over that.
+bashio::net.wait_for 48096 127.0.0.1 900
+
+bashio::log.info 'Starting NGINX...'
+exec nginx
