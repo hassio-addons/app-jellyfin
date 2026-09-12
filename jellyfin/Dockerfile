@@ -12,7 +12,7 @@ ARG JELLYFIN_VERSION="10.11.11"
 RUN \
     apt-get update \
     && apt-get install -y --no-install-recommends \
-        gpg=2.4.7-21+deb13u1+b4 \
+        gpg=2.4.7-21+deb13u1+b5 \
     \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key \
