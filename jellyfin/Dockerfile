@@ -12,7 +12,7 @@ ARG JELLYFIN_VERSION="10.11.11"
 RUN \
     apt-get update \
     && apt-get install -y --no-install-recommends \
-        gpg=2.4.7-21+deb13u1+b4 \
+        gpg=2.4.7-21+deb13u1+b5 \
     \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key \
@@ -28,7 +28,7 @@ RUN \
         jellyfin-server="${JELLYFIN_VERSION}+deb13" \
         jellyfin-web="${JELLYFIN_VERSION}+deb13" \
         libdrm2=2.4.124-2 \
-        nginx=1.26.3-3+deb13u7 \
+        nginx=1.26.3-3+deb13u8 \
         xmlstarlet>="1.6.1-4" \
     \
     && apt-get -y clean \
