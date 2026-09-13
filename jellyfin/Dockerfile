@@ -28,7 +28,7 @@ RUN \
         jellyfin-server="${JELLYFIN_VERSION}+deb13" \
         jellyfin-web="${JELLYFIN_VERSION}+deb13" \
         libdrm2=2.4.124-2 \
-        nginx=1.26.3-3+deb13u7 \
+        nginx=1.26.3-3+deb13u8 \
         xmlstarlet>="1.6.1-4" \
     \
     && apt-get -y clean \
