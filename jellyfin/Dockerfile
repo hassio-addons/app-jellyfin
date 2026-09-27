@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:9.4.0
+ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:9.5.0
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
@@ -28,7 +28,7 @@ RUN \
         jellyfin-server="${JELLYFIN_VERSION}+deb13" \
         jellyfin-web="${JELLYFIN_VERSION}+deb13" \
         libdrm2=2.4.124-2 \
-        nginx=1.26.3-3+deb13u8 \
+        nginx=1.26.3-3+deb13u9 \
         xmlstarlet>="1.6.1-4" \
     \
     && apt-get -y clean \
