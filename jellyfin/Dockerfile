@@ -6,7 +6,7 @@ FROM ${BUILD_FROM}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Setup base
-ARG JELLYFIN_VERSION="12.2"
+ARG JELLYFIN_VERSION="12.3"
 
 # hadolint ignore=DL3008
 RUN \
